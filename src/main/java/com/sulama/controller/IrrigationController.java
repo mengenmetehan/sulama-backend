@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +35,7 @@ public class IrrigationController {
      * POST /api/irrigation/motor/on
      * POST /api/irrigation/motor/off
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/motor/{action}")
     public ResponseEntity<MotorCommandResponse> controlMotor(
             @PathVariable String action) {
@@ -107,6 +109,7 @@ public class IrrigationController {
      * Yeni zamanlayıcı
      * POST /api/irrigation/schedules
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/schedules")
     public ResponseEntity<ScheduleResponse> createSchedule(
             @Valid @RequestBody ScheduleRequest request) {
@@ -117,6 +120,7 @@ public class IrrigationController {
      * Zamanlayıcı güncelle
      * PUT /api/irrigation/schedules/{id}
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/schedules/{id}")
     public ResponseEntity<ScheduleResponse> updateSchedule(
             @PathVariable Long id,
@@ -128,6 +132,7 @@ public class IrrigationController {
      * Zamanlayıcı sil
      * DELETE /api/irrigation/schedules/{id}
      */
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/schedules/{id}")
     public ResponseEntity<Void> deleteSchedule(@PathVariable Long id) {
         irrigationService.deleteSchedule(id);
@@ -138,6 +143,7 @@ public class IrrigationController {
      * Zamanlayıcı aktif/pasif toggle
      * POST /api/irrigation/schedules/{id}/toggle
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/schedules/{id}/toggle")
     public ResponseEntity<ScheduleResponse> toggleSchedule(@PathVariable Long id) {
         return ResponseEntity.ok(irrigationService.toggleSchedule(id));
