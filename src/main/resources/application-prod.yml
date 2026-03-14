@@ -29,3 +29,13 @@ logging:
 mqtt:
   broker:
     mock-enabled: false
+
+# JWT Ayarları
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}  # 24 saat
+
+# Varsayılan admin kullanıcısı (env var ile override et!)
+admin:
+  username: ${ADMIN_USERNAME}
+  password: ${ADMIN_PASSWORD}
