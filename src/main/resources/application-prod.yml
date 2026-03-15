@@ -25,6 +25,9 @@ logging:
   level:
     com.sulama: INFO
     org.eclipse.paho: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.type.descriptor.sql: WARN
 
 mqtt:
   broker:
