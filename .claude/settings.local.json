@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BASE=/c/Users/MENGEN/Desktop/Projects/sulama/sulama-backend/sulama-backend\nmkdir -p $BASE/src/main/java/com/sulama/security\nmkdir -p $BASE/src/main/java/com/sulama/model/dto\necho \"dirs created\")",
+      "Bash(./gradlew build:*)",
+      "Bash(gradle:*)"
+    ]
+  }
+}
