@@ -19,11 +19,9 @@ public interface MotorLogRepository extends JpaRepository<MotorLog, Long> {
     @Query("SELECT m FROM MotorLog m WHERE m.createdAt >= :since ORDER BY m.createdAt DESC")
     List<MotorLog> findRecentLogs(@Param("since") LocalDateTime since);
 
-    @Query("SELECT m FROM MotorLog m WHERE m.action = :action AND m.stoppedAt IS NULL " +
-           "ORDER BY m.startedAt DESC")
-    Optional<MotorLog> findActiveSession(@Param("action") MotorAction action);
+    Optional<MotorLog> findFirstByActionAndStoppedAtIsNullOrderByStartedAtDesc(MotorAction action);
 
     default Optional<MotorLog> findActiveMotorSession() {
-        return findActiveSession(MotorAction.ON);
+        return findFirstByActionAndStoppedAtIsNullOrderByStartedAtDesc(MotorAction.ON);
     }
 }

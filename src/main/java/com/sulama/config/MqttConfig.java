@@ -46,7 +46,22 @@ public class MqttConfig {
             return client;
 
         } catch (MqttException e) {
-            log.error("MQTT Broker'a bağlanılamadı: {} — Mock moda geçiliyor", e.getMessage());
+            switch (e.getReasonCode()) {
+                case MqttException.REASON_CODE_FAILED_AUTHENTICATION ->
+                    log.error("MQTT bağlantı hatası: Hatalı kullanıcı adı veya şifre (kod: {}). " +
+                              "MQTT_USERNAME ve MQTT_PASSWORD env var'larını kontrol et.", e.getReasonCode());
+                case MqttException.REASON_CODE_NOT_AUTHORIZED ->
+                    log.error("MQTT bağlantı hatası: Yetkisiz erişim (kod: {}). " +
+                              "Broker ACL ayarlarını kontrol et.", e.getReasonCode());
+                case MqttException.REASON_CODE_BROKER_UNAVAILABLE ->
+                    log.error("MQTT bağlantı hatası: Broker erişilemiyor (kod: {}). " +
+                              "MQTT_BROKER_URL kontrol et: {}", e.getReasonCode(), broker.getUrl());
+                case MqttException.REASON_CODE_CONNECTION_LOST ->
+                    log.error("MQTT bağlantı hatası: Bağlantı kesildi (kod: {})", e.getReasonCode());
+                default ->
+                    log.error("MQTT bağlantı hatası (kod: {}): {}", e.getReasonCode(), e.getMessage());
+            }
+            log.warn("MQTT bağlanamadı — Mock moda geçiliyor");
             return null;
         }
     }

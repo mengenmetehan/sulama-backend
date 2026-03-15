@@ -57,7 +57,11 @@ public class MqttService {
 
                 @Override
                 public void connectionLost(Throwable cause) {
-                    log.warn("MQTT bağlantısı koptu: {}", cause.getMessage());
+                    if (cause instanceof MqttException mqttEx) {
+                        log.warn("MQTT bağlantısı koptu (kod: {}): {}", mqttEx.getReasonCode(), cause.getMessage());
+                    } else {
+                        log.warn("MQTT bağlantısı koptu: {}", cause.getMessage());
+                    }
                 }
 
                 @Override
@@ -67,7 +71,11 @@ public class MqttService {
 
                 @Override
                 public void deliveryComplete(IMqttDeliveryToken token) {
-                    // Mesaj başarıyla gönderildi
+                    try {
+                        log.info("MQTT broker mesajı onayladı (messageId: {})", token.getMessageId());
+                    } catch (Exception e) {
+                        log.warn("MQTT delivery token okunamadı: {}", e.getMessage());
+                    }
                 }
             });
 
