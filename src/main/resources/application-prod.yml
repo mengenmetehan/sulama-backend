@@ -8,6 +8,10 @@ spring:
       minimum-idle: 2
       connection-timeout: 20000
       idle-timeout: 300000
+      keepalive-time: 300000
+      max-lifetime: 600000
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
 
   jpa:
     open-in-view: false
