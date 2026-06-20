@@ -10,6 +10,7 @@ import com.sulama.model.dto.ScheduleRequest;
 import com.sulama.model.dto.ScheduleResponse;
 import com.sulama.repository.MotorLogRepository;
 import com.sulama.repository.ScheduleRepository;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -28,6 +33,20 @@ public class IrrigationService {
     private final ScheduleRepository scheduleRepo;
     private final MotorLogRepository motorLogRepo;
     private final IrrigationProperties irrigationProperties;
+
+    private final ScheduledExecutorService heartbeatExecutor =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "motor-heartbeat");
+                t.setDaemon(true);
+                return t;
+            });
+    private volatile ScheduledFuture<?> motorHeartbeat;
+
+    @PreDestroy
+    public void shutdown() {
+        stopHeartbeat();
+        heartbeatExecutor.shutdownNow();
+    }
 
     // ============================================================
     // MOTOR KONTROL
@@ -41,10 +60,13 @@ public class IrrigationService {
     @Transactional
     public MotorCommandResponse controlMotor(String action, MotorSource source, Long scheduleId) {
         boolean turnOn = "on".equalsIgnoreCase(action);
-        String mqttCommand = turnOn ? "MOTOR_ON" : "MOTOR_OFF";
 
-        // MQTT komutu gönder
-        mqttService.sendCommand(mqttCommand);
+        if (turnOn) {
+            startHeartbeat();
+        } else {
+            stopHeartbeat();
+            mqttService.sendCommand("MOTOR_OFF");
+        }
 
         // Log kaydet
         if (turnOn) {
@@ -155,6 +177,27 @@ public class IrrigationService {
                 controlMotor("off", MotorSource.AUTO);
             }
         });
+    }
+
+    // ============================================================
+    // MOTOR HEARTBEAT
+    // ============================================================
+
+    private void startHeartbeat() {
+        stopHeartbeat();
+        motorHeartbeat = heartbeatExecutor.scheduleAtFixedRate(
+                () -> mqttService.sendCommand("MOTOR_ON"),
+                0, 2, TimeUnit.SECONDS);
+        log.info("Motor heartbeat başlatıldı (2s aralık)");
+    }
+
+    private void stopHeartbeat() {
+        ScheduledFuture<?> current = motorHeartbeat;
+        if (current != null && !current.isCancelled()) {
+            current.cancel(false);
+            motorHeartbeat = null;
+            log.info("Motor heartbeat durduruldu");
+        }
     }
 
     // ============================================================
