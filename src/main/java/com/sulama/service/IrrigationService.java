@@ -187,8 +187,8 @@ public class IrrigationService {
         stopHeartbeat();
         motorHeartbeat = heartbeatExecutor.scheduleAtFixedRate(
                 () -> mqttService.sendCommand("MOTOR_ON"),
-                0, 1, TimeUnit.SECONDS);
-        log.info("Motor heartbeat başlatıldı (1s aralık)");
+                0, 200, TimeUnit.MILLISECONDS);
+        log.info("Motor heartbeat başlatıldı (200ms aralık)");
     }
 
     private void stopHeartbeat() {
