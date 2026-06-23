@@ -32,7 +32,7 @@ irrigation:
     low-threshold: 30
     high-threshold: 70
   motor:
-    max-runtime-minutes: 180
+    max-runtime-minutes: 600
     pulse-confirmation-timeout-seconds: 10
 
 # JWT Ayarları
