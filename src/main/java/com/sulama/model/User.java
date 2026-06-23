@@ -33,4 +33,7 @@ public class User {
     @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "fcm_token", length = 255)
+    private String fcmToken;
 }

@@ -130,6 +130,7 @@ public class MqttService {
                     .deviceOnline(true)
                     .lastSeen(lastHeartbeat)
                     .build();
+
             lastStatus.set(statusResponse);
 
             // Veritabanına kaydet
@@ -231,5 +232,12 @@ public class MqttService {
      */
     public boolean isConnected() {
         return mqttClient != null && mqttClient.isConnected();
+    }
+
+    /**
+     * Son heartbeat zamanı — offline tespiti için SchedulerService tarafından kullanılır
+     */
+    public LocalDateTime getLastHeartbeatTime() {
+        return lastHeartbeat;
     }
 }

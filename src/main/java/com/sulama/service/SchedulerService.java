@@ -3,6 +3,7 @@ package com.sulama.service;
 import com.sulama.model.IrrigationSchedule;
 import com.sulama.model.enums.MotorSource;
 import com.sulama.repository.ScheduleRepository;
+import com.sulama.repository.UserRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,9 +24,15 @@ public class SchedulerService {
 
     private final ScheduleRepository scheduleRepo;
     private final IrrigationService irrigationService;
+    private final MqttService mqttService;
+    private final FcmService fcmService;
+    private final UserRepository userRepository;
 
     /** Son tetiklenme zamanları — tekrar tetiklenmesini önlemek için */
     private final Map<Long, LocalDateTime> lastTriggered = new ConcurrentHashMap<>();
+
+    /** Offline bildirimi gönderildi mi — cihaz tekrar online olana kadar tekrar gönderme */
+    private volatile boolean offlineNotificationSent = false;
 
     /** Zamanlayıcı kapatma görevleri için executor */
     private final ScheduledExecutorService executor =
@@ -52,6 +59,31 @@ public class SchedulerService {
                 log.error("Zamanlayıcı kontrol hatası [{}]: {}",
                         schedule.getName(), e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Her dakika ESP32 heartbeat kontrolü — 5 dakika sessizlik varsa bildirim gönder.
+     */
+    @Scheduled(cron = "0 * * * * *")
+    public void checkDeviceHeartbeat() {
+        LocalDateTime lastHeartbeat = mqttService.getLastHeartbeatTime();
+
+        // Hiç mesaj gelmemişse (uygulama yeni başladı) bildirim gönderme
+        if (lastHeartbeat == null) return;
+
+        boolean isOffline = lastHeartbeat.isBefore(LocalDateTime.now().minusMinutes(5));
+
+        if (isOffline && !offlineNotificationSent) {
+            List<String> tokens = userRepository.findAllActiveFcmTokens();
+            fcmService.sendDeviceOfflineNotification(tokens);
+            offlineNotificationSent = true;
+            log.warn("Cihaz çevrimdışı bildirimi gönderildi (son heartbeat: {})", lastHeartbeat);
+        } else if (!isOffline && offlineNotificationSent) {
+            List<String> tokens = userRepository.findAllActiveFcmTokens();
+            fcmService.sendDeviceOnlineNotification(tokens);
+            offlineNotificationSent = false;
+            log.info("Cihaz tekrar çevrimiçi bildirimi gönderildi");
         }
     }
 
