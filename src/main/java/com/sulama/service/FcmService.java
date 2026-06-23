@@ -3,6 +3,7 @@ package com.sulama.service;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,8 +12,11 @@ import java.util.List;
 @Service
 public class FcmService {
 
+    @Value("${firebase.enabled:true}")
+    private boolean enabled;
+
     public void sendToTokens(List<String> tokens, String title, String body) {
-        if (FirebaseApp.getApps().isEmpty()) {
+        if (!enabled || FirebaseApp.getApps().isEmpty()) {
             log.debug("FCM devre dışı — bildirim atlanıyor: {}", title);
             return;
         }

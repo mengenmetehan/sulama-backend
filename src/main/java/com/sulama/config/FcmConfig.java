@@ -15,11 +15,19 @@ import java.io.IOException;
 @Configuration
 public class FcmConfig {
 
+    @Value("${firebase.enabled:true}")
+    private boolean enabled;
+
     @Value("${firebase.service-account-path:}")
     private String serviceAccountPath;
 
     @PostConstruct
     public void initFirebase() {
+        if (!enabled) {
+            log.info("FCM: firebase.enabled=false — push bildirimleri devre dışı");
+            return;
+        }
+
         if (serviceAccountPath == null || serviceAccountPath.isBlank()) {
             log.warn("FCM: firebase.service-account-path yapılandırılmamış — push bildirimleri devre dışı");
             return;
