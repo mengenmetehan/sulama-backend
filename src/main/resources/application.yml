@@ -44,3 +44,7 @@ jwt:
 admin:
   username: ${ADMIN_USERNAME:admin}
   password: ${ADMIN_PASSWORD:sulama2024}
+
+# Firebase / FCM
+firebase:
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
