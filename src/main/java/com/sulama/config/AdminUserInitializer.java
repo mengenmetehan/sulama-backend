@@ -26,15 +26,24 @@ public class AdminUserInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!userRepository.existsByUsername(adminUsername)) {
-            User admin = User.builder()
-                    .username(adminUsername)
-                    .password(passwordEncoder.encode(adminPassword))
-                    .role("ROLE_ADMIN")
-                    .enabled(true)
-                    .build();
-            userRepository.save(admin);
-            log.info("Admin kullanıcısı oluşturuldu: {}", adminUsername);
-        }
+        userRepository.findByUsername(adminUsername).ifPresentOrElse(
+            existing -> {
+                if (!passwordEncoder.matches(adminPassword, existing.getPassword())) {
+                    existing.setPassword(passwordEncoder.encode(adminPassword));
+                    userRepository.save(existing);
+                    log.info("Admin şifresi güncellendi: {}", adminUsername);
+                }
+            },
+            () -> {
+                User admin = User.builder()
+                        .username(adminUsername)
+                        .password(passwordEncoder.encode(adminPassword))
+                        .role("ROLE_ADMIN")
+                        .enabled(true)
+                        .build();
+                userRepository.save(admin);
+                log.info("Admin kullanıcısı oluşturuldu: {}", adminUsername);
+            }
+        );
     }
 }
