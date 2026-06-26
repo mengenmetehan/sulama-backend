@@ -45,6 +45,15 @@ admin:
   username: ${ADMIN_USERNAME:admin}
   password: ${ADMIN_PASSWORD:sulama2024}
 
+app:
+  users:
+    - username: ${USER1_USERNAME:ahmet}
+      password: ${USER1_PASSWORD:}
+    - username: ${USER2_USERNAME:mehmet}
+      password: ${USER2_PASSWORD:}
+    - username: ${USER3_USERNAME:mehmet}
+      password: ${USER3_PASSWORD:}
+
 # Firebase / FCM
 firebase:
   enabled: ${FIREBASE_ENABLED:true}

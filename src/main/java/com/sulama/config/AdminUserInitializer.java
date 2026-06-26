@@ -9,6 +9,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class AdminUserInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AppUsersProperties appUsersProperties;
 
     @Value("${admin.username:admin}")
     private String adminUsername;
@@ -26,23 +28,41 @@ public class AdminUserInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        userRepository.findByUsername(adminUsername).ifPresentOrElse(
+        // Admin kullanıcısı
+        upsertUser(adminUsername, adminPassword, "ROLE_ADMIN");
+
+        // Config/env ile tanımlanan diğer kullanıcılar
+        appUsersProperties.getUsers().forEach(u ->
+                upsertUser(u.getUsername(), u.getPassword(), u.getRole()));
+    }
+
+    /**
+     * Kullanıcı yoksa oluşturur, varsa şifresi değiştiyse günceller.
+     * Mevcut kullanıcının fcm_token gibi diğer alanları korunur.
+     */
+    private void upsertUser(String username, String rawPassword, String role) {
+        if (!StringUtils.hasText(username) || !StringUtils.hasText(rawPassword)) {
+            log.warn("Kullanıcı seed atlandı — kullanıcı adı veya şifre boş: {}", username);
+            return;
+        }
+
+        userRepository.findByUsername(username).ifPresentOrElse(
             existing -> {
-                if (!passwordEncoder.matches(adminPassword, existing.getPassword())) {
-                    existing.setPassword(passwordEncoder.encode(adminPassword));
+                if (!passwordEncoder.matches(rawPassword, existing.getPassword())) {
+                    existing.setPassword(passwordEncoder.encode(rawPassword));
                     userRepository.save(existing);
-                    log.info("Admin şifresi güncellendi: {}", adminUsername);
+                    log.info("Kullanıcı şifresi güncellendi: {}", username);
                 }
             },
             () -> {
-                User admin = User.builder()
-                        .username(adminUsername)
-                        .password(passwordEncoder.encode(adminPassword))
-                        .role("ROLE_ADMIN")
+                User user = User.builder()
+                        .username(username)
+                        .password(passwordEncoder.encode(rawPassword))
+                        .role(role)
                         .enabled(true)
                         .build();
-                userRepository.save(admin);
-                log.info("Admin kullanıcısı oluşturuldu: {}", adminUsername);
+                userRepository.save(user);
+                log.info("Kullanıcı oluşturuldu: {} ({})", username, role);
             }
         );
     }
