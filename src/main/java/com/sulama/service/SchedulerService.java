@@ -72,7 +72,7 @@ public class SchedulerService {
         // Hiç mesaj gelmemişse (uygulama yeni başladı) bildirim gönderme
         if (lastHeartbeat == null) return;
 
-        boolean isOffline = lastHeartbeat.isBefore(LocalDateTime.now().minusMinutes(5));
+        boolean isOffline = lastHeartbeat.isBefore(LocalDateTime.now().minusMinutes(2));
 
         if (isOffline && !offlineNotificationSent) {
             List<String> tokens = userRepository.findAllActiveFcmTokens();
@@ -85,6 +85,21 @@ public class SchedulerService {
             offlineNotificationSent = false;
             log.info("Cihaz tekrar çevrimiçi bildirimi gönderildi");
         }
+    }
+
+    /**
+     * TEST — isOffline=true senaryosunu zorla tetikler.
+     * Heartbeat'e bakmadan, gerçek FCM yoluyla kayıtlı tüm token'lara
+     * "Cihaz Çevrimdışı" bildirimi gönderir (checkDeviceHeartbeat ile aynı dal).
+     *
+     * @return bildirim gönderilen token sayısı
+     */
+    public int triggerOfflineNotificationForTest() {
+        List<String> tokens = userRepository.findAllActiveFcmTokens();
+        fcmService.sendDeviceOfflineNotification(tokens);
+        offlineNotificationSent = true;
+        log.warn("[TEST] Cihaz çevrimdışı bildirimi tetiklendi ({} token)", tokens.size());
+        return tokens.size();
     }
 
     /**

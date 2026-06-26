@@ -7,6 +7,7 @@ import com.sulama.repository.MotorLogRepository;
 import com.sulama.repository.SensorReadingRepository;
 import com.sulama.service.IrrigationService;
 import com.sulama.service.MqttService;
+import com.sulama.service.SchedulerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ public class IrrigationController {
 
     private final IrrigationService irrigationService;
     private final MqttService mqttService;
+    private final SchedulerService schedulerService;
     private final MotorLogRepository motorLogRepo;
     private final SensorReadingRepository sensorReadingRepo;
 
@@ -175,6 +177,24 @@ public class IrrigationController {
 
         LocalDateTime since = LocalDateTime.now().minusDays(days);
         return ResponseEntity.ok(motorLogRepo.findRecentLogs(since));
+    }
+
+    // ==================== TEST ====================
+
+    /**
+     * TEST — MQTT disconnect (isOffline=true) senaryosunu zorla tetikler.
+     * Kayıtlı tüm cihazlara "Cihaz Çevrimdışı" FCM bildirimi gönderir.
+     * POST /api/irrigation/test/device-offline
+     */
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/test/device-offline")
+    public ResponseEntity<Map<String, Object>> testDeviceOffline() {
+        int tokenCount = schedulerService.triggerOfflineNotificationForTest();
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Cihaz çevrimdışı bildirimi gönderildi",
+                "tokenCount", tokenCount
+        ));
     }
 
     // ==================== SAĞLIK KONTROLÜ ====================
