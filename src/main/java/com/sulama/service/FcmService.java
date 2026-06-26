@@ -58,6 +58,29 @@ public class FcmService {
         }
     }
 
+    public boolean sendTestNotification(String token) {
+        if (FirebaseApp.getApps().isEmpty()) {
+            log.warn("FCM test: Firebase başlatılmamış");
+            return false;
+        }
+        Message message = Message.builder()
+                .setToken(token)
+                .setNotification(Notification.builder()
+                        .setTitle("Test Bildirimi")
+                        .setBody("Firebase bağlantısı başarılı!")
+                        .build())
+                .putData("type", "test")
+                .build();
+        try {
+            String messageId = FirebaseMessaging.getInstance().send(message);
+            log.info("FCM test başarılı, messageId: {}", messageId);
+            return true;
+        } catch (FirebaseMessagingException e) {
+            log.error("FCM test başarısız: {}", e.getMessage());
+            return false;
+        }
+    }
+
     public void sendDeviceOfflineNotification(List<String> tokens) {
         sendToTokens(tokens, "Cihaz Çevrimdışı", "ESP32 sulama cihazından 5 dakikadır yanıt alınamıyor.");
     }
