@@ -49,3 +49,4 @@ admin:
 firebase:
   enabled: ${FIREBASE_ENABLED:true}
   service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}

@@ -8,8 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Configuration
@@ -21,6 +24,9 @@ public class FcmConfig {
     @Value("${firebase.service-account-path:}")
     private String serviceAccountPath;
 
+    @Value("${firebase.service-account-json:}")
+    private String serviceAccountJson;
+
     @PostConstruct
     public void initFirebase() {
         if (!enabled) {
@@ -28,23 +34,33 @@ public class FcmConfig {
             return;
         }
 
-        if (serviceAccountPath == null || serviceAccountPath.isBlank()) {
-            log.warn("FCM: firebase.service-account-path yapılandırılmamış — push bildirimleri devre dışı");
-            return;
-        }
-
         if (!FirebaseApp.getApps().isEmpty()) {
             return;
         }
 
-        try (FileInputStream serviceAccount = new FileInputStream(serviceAccountPath)) {
+        try {
+            InputStream credentialsStream = resolveCredentials();
+            if (credentialsStream == null) {
+                log.warn("FCM: service account yapılandırılmamış — push bildirimleri devre dışı");
+                return;
+            }
             FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setCredentials(GoogleCredentials.fromStream(credentialsStream))
                     .build();
             FirebaseApp.initializeApp(options);
-            log.info("Firebase başlatıldı: {}", serviceAccountPath);
+            log.info("Firebase başlatıldı");
         } catch (IOException e) {
             log.error("Firebase başlatma hatası — bildirimler devre dışı: {}", e.getMessage());
         }
+    }
+
+    private InputStream resolveCredentials() throws IOException {
+        if (serviceAccountJson != null && !serviceAccountJson.isBlank()) {
+            return new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8));
+        }
+        if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
+            return new FileInputStream(serviceAccountPath);
+        }
+        return null;
     }
 }
