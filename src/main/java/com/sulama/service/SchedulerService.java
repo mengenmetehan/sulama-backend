@@ -31,8 +31,10 @@ public class SchedulerService {
     /** Son tetiklenme zamanları — tekrar tetiklenmesini önlemek için */
     private final Map<Long, LocalDateTime> lastTriggered = new ConcurrentHashMap<>();
 
-    /** Offline bildirimi gönderildi mi — cihaz tekrar online olana kadar tekrar gönderme */
-    private volatile boolean offlineNotificationSent = false;
+    /** Offline bildirim durumları — her eşik için ayrı flag */
+    private volatile boolean notified2m  = false;
+    private volatile boolean notified10m = false;
+    private volatile boolean notified30m = false;
 
     /** Zamanlayıcı kapatma görevleri için executor */
     private final ScheduledExecutorService executor =
@@ -63,7 +65,9 @@ public class SchedulerService {
     }
 
     /**
-     * Her dakika ESP32 heartbeat kontrolü — 5 dakika sessizlik varsa bildirim gönder.
+     * Her dakika ESP32 heartbeat kontrolü.
+     * 2 dk → ilk uyarı, 10 dk → ikinci uyarı, 30 dk → kritik uyarı.
+     * Cihaz tekrar online olunca tek seferlik "geri döndü" bildirimi.
      */
     @Scheduled(cron = "0 * * * * *")
     public void checkDeviceHeartbeat() {
@@ -72,17 +76,34 @@ public class SchedulerService {
         // Hiç mesaj gelmemişse (uygulama yeni başladı) bildirim gönderme
         if (lastHeartbeat == null) return;
 
-        boolean isOffline = lastHeartbeat.isBefore(LocalDateTime.now().minusMinutes(2));
+        long minutesOffline = ChronoUnit.MINUTES.between(lastHeartbeat, LocalDateTime.now());
+        boolean anyNotified = notified2m || notified10m || notified30m;
 
-        if (isOffline && !offlineNotificationSent) {
-            List<String> tokens = userRepository.findAllActiveFcmTokens();
-            fcmService.sendDeviceOfflineNotification(tokens);
-            offlineNotificationSent = true;
-            log.warn("Cihaz çevrimdışı bildirimi gönderildi (son heartbeat: {})", lastHeartbeat);
-        } else if (!isOffline && offlineNotificationSent) {
+        if (minutesOffline >= 2) {
+            List<String> tokens = null;
+
+            if (!notified2m) {
+                tokens = userRepository.findAllActiveFcmTokens();
+                fcmService.sendDeviceOffline2mNotification(tokens);
+                notified2m = true;
+                log.warn("Cihaz çevrimdışı (2 dk) bildirimi gönderildi");
+            }
+            if (minutesOffline >= 10 && !notified10m) {
+                if (tokens == null) tokens = userRepository.findAllActiveFcmTokens();
+                fcmService.sendDeviceOffline10mNotification(tokens);
+                notified10m = true;
+                log.warn("Cihaz çevrimdışı (10 dk) bildirimi gönderildi");
+            }
+            if (minutesOffline >= 30 && !notified30m) {
+                if (tokens == null) tokens = userRepository.findAllActiveFcmTokens();
+                fcmService.sendDeviceOffline30mNotification(tokens);
+                notified30m = true;
+                log.warn("Cihaz çevrimdışı (30 dk) bildirimi gönderildi");
+            }
+        } else if (anyNotified) {
             List<String> tokens = userRepository.findAllActiveFcmTokens();
             fcmService.sendDeviceOnlineNotification(tokens);
-            offlineNotificationSent = false;
+            notified2m = notified10m = notified30m = false;
             log.info("Cihaz tekrar çevrimiçi bildirimi gönderildi");
         }
     }
@@ -96,8 +117,8 @@ public class SchedulerService {
      */
     public int triggerOfflineNotificationForTest() {
         List<String> tokens = userRepository.findAllActiveFcmTokens();
-        fcmService.sendDeviceOfflineNotification(tokens);
-        offlineNotificationSent = true;
+        fcmService.sendDeviceOffline2mNotification(tokens);
+        notified2m = true;
         log.warn("[TEST] Cihaz çevrimdışı bildirimi tetiklendi ({} token)", tokens.size());
         return tokens.size();
     }

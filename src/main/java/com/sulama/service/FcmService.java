@@ -81,8 +81,16 @@ public class FcmService {
         }
     }
 
-    public void sendDeviceOfflineNotification(List<String> tokens) {
-        sendToTokens(tokens, "Cihaz Çevrimdışı", "ESP32 sulama cihazından 5 dakikadır yanıt alınamıyor.");
+    public void sendDeviceOffline2mNotification(List<String> tokens) {
+        sendToTokens(tokens, "Cihaz Çevrimdışı", "ESP32 sulama cihazından 2 dakikadır yanıt alınamıyor.");
+    }
+
+    public void sendDeviceOffline10mNotification(List<String> tokens) {
+        sendToTokens(tokens, "Cihaz Hâlâ Çevrimdışı", "ESP32 sulama cihazına 10 dakikadır ulaşılamıyor.");
+    }
+
+    public void sendDeviceOffline30mNotification(List<String> tokens) {
+        sendToTokens(tokens, "Cihaz Çevrimdışı (30 dk)", "ESP32 sulama cihazına 30 dakikadır ulaşılamıyor. Kontrol edin.");
     }
 
     public void sendDeviceOnlineNotification(List<String> tokens) {
