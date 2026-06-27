@@ -2,6 +2,7 @@ package com.sulama.controller;
 
 import com.sulama.model.MotorLog;
 import com.sulama.model.SensorReading;
+import com.sulama.model.enums.MotorAction;
 import com.sulama.model.enums.MotorSource;
 import com.sulama.model.dto.*;
 import com.sulama.repository.MotorLogRepository;
@@ -73,12 +74,24 @@ public class IrrigationController {
         DeviceStatusResponse status = mqttService.getLastStatus();
 
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        var todayLogs = motorLogRepo.findRecentLogs(todayStart);
+        LocalDateTime now = LocalDateTime.now();
 
-        long totalMinutes = todayLogs.stream()
-                .filter(l -> l.getStartedAt() != null)
-                .mapToLong(MotorLog::getRuntimeMinutes)
+        // Bugün başlayıp tamamlanan oturumlar
+        long completedMinutes = motorLogRepo.findRecentLogs(todayStart).stream()
+                .filter(l -> l.getStartedAt() != null && l.getStoppedAt() != null)
+                .mapToLong(l -> java.time.Duration.between(l.getStartedAt(), l.getStoppedAt()).toMinutes())
                 .sum();
+
+        // Aktif oturum — gece yarısı öncesi başlamış olabilir, sadece bugünkü kısmı say
+        long activeMinutes = motorLogRepo.findActiveMotorSession()
+                .filter(a -> a.getStartedAt() != null)
+                .map(a -> {
+                    LocalDateTime from = a.getStartedAt().isBefore(todayStart) ? todayStart : a.getStartedAt();
+                    return java.time.Duration.between(from, now).toMinutes();
+                })
+                .orElse(0L);
+
+        long totalMinutes = completedMinutes + activeMinutes;
 
         int activeCount = (int) irrigationService.getAllSchedules().stream()
                 .filter(ScheduleResponse::isEnabled)
