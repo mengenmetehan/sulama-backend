@@ -1,5 +1,6 @@
 package com.sulama.controller;
 
+import com.sulama.model.MotorLog;
 import com.sulama.model.SensorReading;
 import com.sulama.model.enums.MotorSource;
 import com.sulama.model.dto.*;
@@ -75,9 +76,8 @@ public class IrrigationController {
         var todayLogs = motorLogRepo.findRecentLogs(todayStart);
 
         long totalMinutes = todayLogs.stream()
-                .filter(l -> l.getStartedAt() != null && l.getStoppedAt() != null)
-                .mapToLong(l -> java.time.Duration.between(
-                        l.getStartedAt(), l.getStoppedAt()).toMinutes())
+                .filter(l -> l.getStartedAt() != null)
+                .mapToLong(MotorLog::getRuntimeMinutes)
                 .sum();
 
         int activeCount = (int) irrigationService.getAllSchedules().stream()
