@@ -2,6 +2,7 @@ package com.sulama.service;
 
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.*;
+import com.sulama.model.enums.MotorSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -95,5 +96,25 @@ public class FcmService {
 
     public void sendDeviceOnlineNotification(List<String> tokens) {
         sendToTokens(tokens, "Cihaz Tekrar Çevrimiçi", "ESP32 sulama cihazı yeniden bağlandı.");
+    }
+
+    public void sendMotorOnNotification(List<String> tokens, MotorSource source) {
+        sendToTokens(tokens, "Motor Açıldı",
+                String.format("Sulama motoru açıldı (%s).", sourceLabel(source)));
+    }
+
+    public void sendMotorOffNotification(List<String> tokens, MotorSource source, long runtimeMinutes) {
+        sendToTokens(tokens, "Motor Kapandı",
+                String.format("Sulama motoru kapandı (%s). Çalışma süresi: %d dk.",
+                        sourceLabel(source), runtimeMinutes));
+    }
+
+    private String sourceLabel(MotorSource source) {
+        if (source == null) return "bilinmiyor";
+        return switch (source) {
+            case MANUAL -> "manuel";
+            case SCHEDULE -> "zamanlayıcı";
+            case AUTO -> "otomatik";
+        };
     }
 }

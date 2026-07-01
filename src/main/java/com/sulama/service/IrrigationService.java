@@ -10,6 +10,7 @@ import com.sulama.model.dto.ScheduleRequest;
 import com.sulama.model.dto.ScheduleResponse;
 import com.sulama.repository.MotorLogRepository;
 import com.sulama.repository.ScheduleRepository;
+import com.sulama.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,8 @@ public class IrrigationService {
     private final ScheduleRepository scheduleRepo;
     private final MotorLogRepository motorLogRepo;
     private final IrrigationProperties irrigationProperties;
+    private final FcmService fcmService;
+    private final UserRepository userRepository;
 
     // ============================================================
     // MOTOR KONTROL
@@ -41,8 +44,10 @@ public class IrrigationService {
     @Transactional
     public MotorCommandResponse controlMotor(String action, MotorSource source, Long scheduleId) {
         boolean turnOn = "on".equalsIgnoreCase(action);
+        log.info("Motor komutu alındı — İstek: {}, Kaynak: {}, Zamanlayıcı: {}", action, source, scheduleId);
 
         mqttService.sendCommand(turnOn ? "MOTOR_ON" : "MOTOR_OFF");
+        log.info("MQTT komutu gönderildi: {}", turnOn ? "MOTOR_ON" : "MOTOR_OFF");
 
         if (turnOn) {
             MotorLog motorLog = MotorLog.builder()
@@ -53,14 +58,17 @@ public class IrrigationService {
                     .build();
             motorLogRepo.save(motorLog);
             log.info("Motor AÇILDI — Kaynak: {}, Zamanlayıcı: {}", source, scheduleId);
+            notifyMotor(true, source, 0);
         } else {
             // Aktif oturumu kapat
-            motorLogRepo.findActiveMotorSession().ifPresent(session -> {
+            motorLogRepo.findActiveMotorSession().ifPresentOrElse(session -> {
                 session.setAction(MotorAction.OFF);
                 session.setStoppedAt(LocalDateTime.now());
                 motorLogRepo.save(session);
-                log.info("Motor KAPATILDI — Çalışma süresi: {} dk", session.getRuntimeMinutes());
-            });
+                long runtimeMinutes = session.getRuntimeMinutes();
+                log.info("Motor KAPATILDI — Kaynak: {}, Çalışma süresi: {} dk", source, runtimeMinutes);
+                notifyMotor(false, source, runtimeMinutes);
+            }, () -> log.warn("Motor kapatma isteği geldi ama aktif motor oturumu yok (Kaynak: {})", source));
         }
 
         return MotorCommandResponse.builder()
@@ -68,6 +76,24 @@ public class IrrigationService {
                 .action(action)
                 .timestamp(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * Motor aç/kapa bildirimini tüm aktif kullanıcılara gönderir.
+     * FCM hatası motor kontrolünü etkilemesin diye izole edilir.
+     */
+    private void notifyMotor(boolean turnedOn, MotorSource source, long runtimeMinutes) {
+        try {
+            List<String> tokens = userRepository.findAllActiveFcmTokens();
+            log.info("Motor {} bildirimi gönderiliyor — {} token", turnedOn ? "açıldı" : "kapandı", tokens.size());
+            if (turnedOn) {
+                fcmService.sendMotorOnNotification(tokens, source);
+            } else {
+                fcmService.sendMotorOffNotification(tokens, source, runtimeMinutes);
+            }
+        } catch (Exception e) {
+            log.error("Motor bildirimi gönderilemedi: {}", e.getMessage());
+        }
     }
 
     // ============================================================
