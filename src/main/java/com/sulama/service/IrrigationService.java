@@ -88,8 +88,10 @@ public class IrrigationService {
             log.info("Motor {} bildirimi gönderiliyor — {} token", turnedOn ? "açıldı" : "kapandı", tokens.size());
             if (turnedOn) {
                 fcmService.sendMotorOnNotification(tokens, source);
+                log.info("Motor AÇILDI bildirimi gönderildi — Kaynak: {}", source);
             } else {
                 fcmService.sendMotorOffNotification(tokens, source, runtimeMinutes);
+                log.info("Motor KAPANDI bildirimi gönderildi — Kaynak: {}, Süre: {} dk", source, runtimeMinutes);
             }
         } catch (Exception e) {
             log.error("Motor bildirimi gönderilemedi: {}", e.getMessage());

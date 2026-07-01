@@ -39,6 +39,21 @@ public class FcmService {
                         .build())
                 .putData("title", title)
                 .putData("body", body)
+                // Android: yüksek öncelik + heads-up (ekran üstünde beliren) bildirim
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId("default")
+                                .setPriority(AndroidNotification.Priority.HIGH)
+                                .setSound("default")
+                                .build())
+                        .build())
+                // iOS: ses + kilit ekranında/afişte göster
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .build())
+                        .build())
                 .build();
 
         try {
