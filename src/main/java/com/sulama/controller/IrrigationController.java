@@ -167,15 +167,48 @@ public class IrrigationController {
     // ==================== SENSÖR VERİLERİ ====================
 
     /**
-     * Sensör okuma geçmişi
-     * GET /api/irrigation/sensors?hours=24
+     * Sensör okuma geçmişi — günlük ortalamalar
+     * GET /api/irrigation/sensors?days=30
      */
     @GetMapping("/sensors")
-    public ResponseEntity<List<SensorReading>> getSensorData(
-            @RequestParam(defaultValue = "24") int hours) {
+    public ResponseEntity<List<DailySensorReading>> getSensorData(
+            @RequestParam(defaultValue = "30") int days) {
 
-        LocalDateTime since = LocalDateTime.now().minusHours(hours);
-        return ResponseEntity.ok(sensorReadingRepo.findRecent("ESP32_MAIN", since));
+        LocalDateTime since = LocalDate.now().minusDays(Math.min(days, 365) - 1L).atStartOfDay();
+        List<SensorReading> readings = sensorReadingRepo.findRecent("ESP32_MAIN", since);
+
+        Map<LocalDate, List<SensorReading>> byDay = readings.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        r -> r.getRecordedAt().toLocalDate(),
+                        java.util.TreeMap::new,
+                        java.util.stream.Collectors.toList()));
+
+        List<DailySensorReading> daily = byDay.entrySet().stream()
+                .map(e -> {
+                    List<SensorReading> dayReadings = e.getValue();
+
+                    java.util.OptionalDouble avgMoisture = dayReadings.stream()
+                            .filter(r -> r.getSoilMoisture() != null)
+                            .mapToInt(SensorReading::getSoilMoisture)
+                            .average();
+
+                    java.util.OptionalDouble avgTemp = dayReadings.stream()
+                            .filter(r -> r.getTemperature() != null)
+                            .mapToDouble(r -> r.getTemperature().doubleValue())
+                            .average();
+
+                    return DailySensorReading.builder()
+                            .recordedAt(e.getKey())
+                            .soilMoisture(avgMoisture.isPresent()
+                                    ? (int) Math.round(avgMoisture.getAsDouble()) : null)
+                            .temperature(avgTemp.isPresent()
+                                    ? java.math.BigDecimal.valueOf(avgTemp.getAsDouble())
+                                            .setScale(1, java.math.RoundingMode.HALF_UP) : null)
+                            .build();
+                })
+                .toList();
+
+        return ResponseEntity.ok(daily);
     }
 
     // ==================== MOTOR LOG ====================

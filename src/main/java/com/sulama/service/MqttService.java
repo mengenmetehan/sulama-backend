@@ -39,6 +39,7 @@ public class MqttService {
                     .build());
 
     private volatile LocalDateTime lastHeartbeat;
+    private volatile LocalDateTime lastSensorSave;
 
     @PostConstruct
     public void init() {
@@ -153,12 +154,17 @@ public class MqttService {
                 .build();
         deviceStatusRepo.save(entity);
 
-        SensorReading reading = SensorReading.builder()
-                .soilMoisture(payload.getSoilMoisture())
-                .temperature(payload.getTemperature())
-                .recordedAt(LocalDateTime.now())
-                .build();
-        sensorReadingRepo.save(reading);
+        // Sensör geçmişi günlük gösterildiği için saatte bir örnek yeterli
+        LocalDateTime now = LocalDateTime.now();
+        if (lastSensorSave == null || lastSensorSave.isBefore(now.minusHours(1))) {
+            SensorReading reading = SensorReading.builder()
+                    .soilMoisture(payload.getSoilMoisture())
+                    .temperature(payload.getTemperature())
+                    .recordedAt(now)
+                    .build();
+            sensorReadingRepo.save(reading);
+            lastSensorSave = now;
+        }
     }
 
     /**
